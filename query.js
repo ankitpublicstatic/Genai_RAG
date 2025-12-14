@@ -9,14 +9,14 @@ import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({});
 const History = []
 
-async function transformQuery(question){
+async function transformQuery(question) {
 
-History.push({
-    role:'user',
-    parts:[{text:question}]
-    })  
+  History.push({
+    role: 'user',
+    parts: [{ text: question }]
+  })
 
-const response = await ai.models.generateContent({
+  const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",
     contents: History,
     config: {
@@ -24,48 +24,48 @@ const response = await ai.models.generateContent({
     Only output the rewritten question and nothing else.
       `,
     },
- });
- 
- History.pop()
- 
- return response.text
+  });
+
+  History.pop()
+
+  return response.text
 
 
 }
 
 async function chatting(question) {
-    
-const queryies = transformQuery(question);
 
-const embeddings = new GoogleGenerativeAIEmbeddings({
+  const queryies = await transformQuery(question);
+
+  const embeddings = new GoogleGenerativeAIEmbeddings({
     apiKey: process.env.GEMINI_API_KEY,
     model: 'text-embedding-004',
-    });
- 
- const queryVector = await embeddings.embedQuery(queryies);   
+  });
 
- History.push({
-    role:'user',
-    parts:[{text:queryies}]
-    })              
+  const queryVector = await embeddings.embedQuery(queryies);
+
+  History.push({
+    role: 'user',
+    parts: [{ text: queryies }]
+  })
 
 
-const pinecone = new Pinecone();
-const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
+  const pinecone = new Pinecone();
+  const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
 
-const searchResults = await pineconeIndex.query({
+  const searchResults = await pineconeIndex.query({
     topK: 10,
     vector: queryVector,
     includeMetadata: true,
-    });
-    
-    
-const context = searchResults.matches
-                   .map(match => match.metadata.text)
-                   .join("\n\n---\n\n");
+  });
 
 
-    const response = await ai.models.generateContent({
+  const context = searchResults.matches
+    .map(match => match.metadata.text)
+    .join("\n\n---\n\n");
+
+
+  const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",
     contents: History,
     config: {
@@ -78,22 +78,23 @@ const context = searchResults.matches
       Context: ${context}
       `,
     },
-   });
+  });
 
 
-   History.push({
-    role:'model',
-    parts:[{text:response.text}]
+  History.push({
+    role: 'model',
+    parts: [{ text: response.text }]
   })
 
   console.log("\n");
   console.log(response.text);
 
 }
-async function main(){
-   const userProblem = readlineSync.question("Ask me anything--> ");
-   await chatting(userProblem);
-   main();
+async function main() {
+  while (true) {
+    const userProblem = readlineSync.question("Ask me anything--> ");
+    await chatting(userProblem);
+  }
 }
 
 
