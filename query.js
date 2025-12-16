@@ -27,10 +27,7 @@ async function transformQuery(question) {
   });
 
   History.pop()
-
   return response.text
-
-
 }
 
 async function chatting(question) {
@@ -96,6 +93,5 @@ async function main() {
     await chatting(userProblem);
   }
 }
-
 
 main();
